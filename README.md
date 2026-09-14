@@ -1,0 +1,109 @@
+# iiif-manifest-generator
+
+Generate valid [IIIF Presentation](https://iiif.io/api/presentation/) manifests
+(2.0, 2.1, 3.0, 4.0) for a tree of folders of images that is served through
+[IIPImage](https://github.com/samvera/image).
+
+## Warning: 
+This project is mostly Qwen generated. I did some minor manual fixes on the generated code. 
+Please verify that the results are correct before using in production.
+
+## How it works
+
+- Every folder containing images gets its own `manifest.json`
+  (IIIF Presentation Manifest with one canvas per image).
+- Every folder containing subfolders gets a `collection.json`
+  (IIIF Collection) that references the documents of its subfolders — and its
+  own manifest when the folder also contains images.
+- Folders with neither images nor document-producing subfolders produce nothing
+  (and are not referenced by their parent collection).
+- Documents are written next to the folder they describe:
+  `<dir>/manifest.json` and `<dir>/collection.json`. Re-running is
+  idempotent (files are deterministically overwritten).
+
+Document identifiers are built from `--base-url`:
+`{base_url}/{path/below/root}/manifest.json`. The same base URL (or
+`--image-base-url`) is used for the IIPImage image-service URLs.
+
+## Install
+
+```bash
+pip install -e .
+# with test dependencies:
+pip install -e ".[dev]"
+```
+
+## Usage
+
+```bash
+# Generate IIIF Presentation 3.0 manifests/collections:
+iiif-manifest-generator /path/to/images --version 3.0 \
+    --base-url https://example.org/images
+
+# The image server (IIPImage) lives somewhere else:
+iiif-manifest-generator /path/to/images --version 2.1 \
+    --base-url https://example.org/manifests \
+    --image-base-url https://images.example.org
+
+# 3.0 manifests referencing IIIF Image API 3 services:
+iiif-manifest-generator /path/to/images --version 3.0 \
+    --base-url https://example.org/images --image-api-3
+
+# Preview without writing files:
+iiif-manifest-generator /path/to/images --version 4.0 \
+    --base-url http://localhost:8080 --dry-run
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `root` | (required) | Root directory to scan recursively. |
+| `--version` | (required) | One of `2.0`, `2.1`, `3.0`, `4.0`. |
+| `--base-url` | (required) | Base URL for document identifiers and (by default) images. |
+| `--image-base-url` | value of `--base-url` | Base URL of the IIPImage server. |
+| `--attribution` | none | Attribution statement (2.0/2.1: `attribution`; 3.0/4.0: `requiredStatement`). |
+| `--license` | none | License URL (2.0/2.1: `license`; 3.0/4.0: `rights`). |
+| `--include-hidden` | off | Include hidden files/directories (leading `.`). |
+| `--keep-extension` | off | Keep the file extension in IIPImage identifiers. |
+| `--no-thumbnails` | off | Do not emit `thumbnail` properties. |
+| `--image-api-3` | off | Reference IIIF Image API 3 services (ImageService3) in 3.0/4.0 manifests instead of Image API 2. Requires IIPImage with `iiif3 = true`. No effect for 2.0/2.1. |
+| `--dry-run` | off | Print documents to stdout instead of writing files. |
+| `-v/--verbose` | off | Debug logging. |
+
+## IIPImage requirements
+
+- The IIPImage IIIF module must be enabled.
+- Identifier mapping: by default the IIPImage identifier of an image is its
+  path relative to the scan root, with the extension removed and URL-encoded:
+  `alpha/nested/d.jpg` → `{image-base-url}/alpha/nested/d/info.json`.
+  Use `--keep-extension` to keep the extension. Adjust to match your IIPImage
+  identifier configuration.
+- By default, **all** manifests reference an IIIF Image API 2 service
+  (`ImageService2`, level0), which works with a standard IIPImage IIIF
+  configuration. For 3.0/4.0 manifests you can pass `--image-api-3` to
+  reference an IIIF Image API 3 service (`ImageService3`, level2) instead;
+  that requires IIPImage to be configured with `iiif3 = true`.
+
+## Validating your output
+
+The official [IIIF Presentation
+Validator](https://github.com/IIIF/presentation-validator):
+
+```bash
+pip install git+https://github.com/IIIF/presentation-validator.git
+iiif-validator validate-dir --version 3.0 /path/to/images
+```
+
+`validate-dir` recursively validates every `.json` file in the directory and
+exits non-zero when any document fails. Note: validating 2.0/2.1 may require
+network access (JSON-LD context retrieval); 3.0/4.0 validate fully offline.
+
+## Tests
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+End-to-end tests run the official validator on the generated output for all
+four versions (both Image API modes for 3.0/4.0) and are skipped when
+`iiif-validator` is not installed.

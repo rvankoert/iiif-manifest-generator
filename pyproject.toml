@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iiif-manifest-generator"
+version = "0.1.0"
+description = "Generate IIIF Presentation manifests (2.0, 2.1, 3.0, 4.0) for folders of images served via IIPImage"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "Pillow>=9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+]
+
+[project.scripts]
+iiif-manifest-generator = "iiif_manifest_generator.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
