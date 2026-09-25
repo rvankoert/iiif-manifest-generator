@@ -1,3 +1,4 @@
+LICENSE
 README.md
 pyproject.toml
 src/iiif_manifest_generator/__init__.py
@@ -23,7 +24,9 @@ src/iiif_manifest_generator/builders/v21.py
 src/iiif_manifest_generator/builders/v30.py
 src/iiif_manifest_generator/builders/v40.py
 tests/test_builders.py
+tests/test_config.py
 tests/test_e2e_validator.py
 tests/test_generate.py
 tests/test_iip.py
+tests/test_spaces.py
 tests/test_tree.py

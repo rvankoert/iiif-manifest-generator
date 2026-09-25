@@ -254,3 +254,59 @@
   7. `tests/test_builders.py` (consequential to 3–6): v21/v30/v40 context & key-style assertions, 4.0 label assertion, `id_key` for 2.1, and `_collect_ids` skipping `target`/`body` (mirrors the validator's unique-id ignore list).
 - **Verbatim audit:** every other file (pyproject.toml, .gitignore, `__init__.py`, `__main__.py`, config, images, iip, models, tree, base, builders registry, writer, generate, cli, conftest, test_iip, test_tree, test_generate, test_e2e_validator, README) is a byte-for-byte match with the plan's code blocks.
 - **Sub-agent note:** this environment has no sub-agent spawning tool; each step was executed as a strictly isolated sequential phase (implement → verify with the plan's own command → log) with no next step started until the previous was green, as required.
+
+---
+
+## 2026-09-25 — Fix: manifests for scans with spaces in names (act mode)
+
+**Background:** the user's scans with spaces in names failed in a generic IIIF
+viewer. Plan-mode investigation identified two causes: (a) image-service ids
+ended in `/info.json` — strict viewers append `/info.json` to the service base
+URL, producing a double path. The user had already manually fixed `iip.py`
+(spec-correct base URL + `!256,256` thumbnails) but the tests were stale;
+(b) `config._normalize_url` did not percent-encode base URLs, so a
+`--base-url` containing raw spaces produced invalid IRIs in every document
+id.
+
+**Changes:**
+- `src/iiif_manifest_generator/config.py`: `_normalize_url` now percent-encodes
+  the URL path/query (`urlsplit` + `quote(safe="/%")` / `quote(safe="=&%")`),
+  preserving existing `%XX` (no double encoding); scheme/netloc/fragment
+  unchanged; trailing-slash stripping preserved.
+- `src/iiif_manifest_generator/iip.py`: docstring updated (service id = base
+  URL; viewers fetch `{id}/info.json`; `!256,256` valid in both Image API 2 and
+  3).
+- `src/iiif_manifest_generator/builders/v30.py` (optional compatibility
+  improvement, validator-gated): the annotation body is now the full-size
+  render (`Image` with id/format/width/height) carrying the image service in a
+  `service` array, mirroring `builders/v40.py` and the 3.0 spec's own
+  examples. The official 3.0 schema accepts this (resource/AnnotationBody +
+  `classes/service` with serviceV3/serviceV2 branches); the official validator
+  passes it in file mode and URL mode.
+- Tests:
+  - 9 stale assertions updated to match the user's manual `iip.py` fix:
+    service id without `/info.json` suffix (test_iip ×2, test_tree ×1,
+    test_builders ×2) and thumbnail `square:256`/`square` → `!256,256`
+    (test_iip ×2, test_builders ×5), all with NOTE comments.
+  - New `tests/test_config.py` (6 tests): base-URL normalization — raw spaces,
+    no double encoding, unicode, netloc preservation, error cases.
+  - New `tests/test_spaces.py` (5 tests) + `image_tree_spaces` fixture in
+    `tests/conftest.py` (`gallery/my scan/{img 1.jpg, sub dir/page 2.jpg}`):
+    encoded identifiers, and all document ids valid IRIs with no raw spaces
+    for 2.0/2.1/3.0/4.0 with a raw-space base URL.
+  - New `tests/test_e2e_validator.py::test_spaces_tree_passes_official_validator`
+    (6 cases): the full official-validator matrix on the spaced tree.
+  - v30 tests in test_builders.py updated to the new Image+service body shape.
+- `README.md`: documented base-URL percent-encoding, the service-id
+  convention, IIPImage's percent-decoding of identifiers, `!256,256`
+  thumbnails, and the 3.0/4.0 body shape.
+
+**Verification (all green):**
+- `python -m pytest` → **50 passed** (38 unit + 12 official-validator e2e:
+  6 original tree + 6 spaced tree).
+- URL-mode validation over `python -m http.server` for the spaced tree
+  (`my scan/` and `my scan/sub dir/` served under the base URL): for each of
+  2.0/2.1/3.0/4.0, `iiif-validator validate .../my%20scan/manifest.json` and
+  `.../collection.json` → exit 0 (8/8).
+- Remaining user-side check: load a real spaced scan in a viewer such as
+  https://iiif.io/viewer.

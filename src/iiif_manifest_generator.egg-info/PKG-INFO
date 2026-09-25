@@ -4,15 +4,21 @@ Version: 0.1.0
 Summary: Generate IIIF Presentation manifests (2.0, 2.1, 3.0, 4.0) for folders of images served via IIPImage
 Requires-Python: >=3.10
 Description-Content-Type: text/markdown
+License-File: LICENSE
 Requires-Dist: Pillow>=9.0
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0; extra == "dev"
+Dynamic: license-file
 
 # iiif-manifest-generator
 
 Generate valid [IIIF Presentation](https://iiif.io/api/presentation/) manifests
 (2.0, 2.1, 3.0, 4.0) for a tree of folders of images that is served through
 [IIPImage](https://github.com/samvera/image).
+
+## Warning: 
+This project is mostly Qwen generated. I did some minor manual fixes on the generated code. 
+Please verify that the results are correct before using in production.
 
 ## How it works
 
@@ -29,7 +35,10 @@ Generate valid [IIIF Presentation](https://iiif.io/api/presentation/) manifests
 
 Document identifiers are built from `--base-url`:
 `{base_url}/{path/below/root}/manifest.json`. The same base URL (or
-`--image-base-url`) is used for the IIPImage image-service URLs.
+`--image-base-url`) is used for the IIPImage image-service URLs. Unsafe
+characters in the base URL (for example spaces in the scan directory's URL)
+are percent-encoded automatically, so every generated identifier is a valid
+IRI.
 
 ## Install
 
@@ -83,6 +92,16 @@ iiif-manifest-generator /path/to/images --version 4.0 \
   `alpha/nested/d.jpg` → `{image-base-url}/alpha/nested/d/info.json`.
   Use `--keep-extension` to keep the extension. Adjust to match your IIPImage
   identifier configuration.
+- The manifests reference the image service with the service **id**
+  `{image-base-url}/{identifier}` (the IIIF Image API base URL); viewers fetch
+  `{id}/info.json`. IIPImage percent-decodes the identifier before looking up
+  the file, so scans with spaces in their names work as long as the
+  identifier matches your IIPImage configuration.
+- Thumbnails use the forced-size token `!256,256`
+  (`.../full/!256,256/0/default.{ext}`), which IIPImage supports via its
+  `sizeByForcedWh` capability. In 3.0/4.0 manifests the annotation body is the
+  full-size render (an `Image`) carrying the image service, mirroring 4.0 and
+  the 3.0 spec's own examples.
 - By default, **all** manifests reference an IIIF Image API 2 service
   (`ImageService2`, level0), which works with a standard IIPImage IIIF
   configuration. For 3.0/4.0 manifests you can pass `--image-api-3` to

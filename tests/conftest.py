@@ -53,6 +53,28 @@ def image_tree(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
+def image_tree_spaces(tmp_path: Path) -> Path:
+    """Create:
+
+    gallery/
+    └── my scan/
+        ├── img 1.jpg    (64x32)
+        └── sub dir/
+            └── page 2.jpg (48x48)
+    """
+    root = tmp_path / "gallery"
+    nested = root / "my scan" / "sub dir"
+    nested.mkdir(parents=True)
+
+    def make(rel: str, size: tuple[int, int], color: tuple[int, int, int]) -> None:
+        Image.new("RGB", size, color).save(root / rel)
+
+    make("my scan/img 1.jpg", (64, 32), (200, 30, 30))
+    make("my scan/sub dir/page 2.jpg", (48, 48), (30, 200, 30))
+    return root
+
+
+@pytest.fixture()
 def make_config(image_tree: Path):
     from iiif_manifest_generator.config import GenerationConfig
 

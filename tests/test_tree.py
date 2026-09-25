@@ -21,7 +21,9 @@ def test_scan_dimensions_and_identifier(make_config):
     assert (a.width, a.height) == (64, 32)
     assert a.mime == "image/jpeg"
     assert a.identifier == "a"
-    assert a.iip.info_url == "http://localhost:8080/a/info.json"
+    # NOTE (deviation from plan): the service id is the Image API base URL
+    # (viewers fetch {info_url}/info.json).
+    assert a.iip.info_url == "http://localhost:8080/a"
 
 
 def test_nested_structure(make_config):

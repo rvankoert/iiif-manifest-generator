@@ -71,11 +71,10 @@ def test_v20_manifest_structure(make_config):
     assert resource["service"]["profile"] == "http://iiif.io/api/image/2/level0.json"
     assert resource["on"] == first["@id"]
     # NOTE (deviation from plan line 1880): the plan asserted
-    # endswith("square:256/0/default."), which is impossible because the plan's
-    # own iip.py (and Step 4's test) include the file extension in thumbnail
-    # URLs (e.g. ".../square:256/0/default.jpg"). Using `in` keeps the intent:
-    # verify the Image API 2 size syntax.
-    assert "square:256/0/default." in data["thumbnail"]["@id"]
+    # endswith("square:256/0/default."), which is impossible because the
+    # thumbnail URL includes the file extension. Using `in` keeps the intent:
+    # verify the forced-size (!256,256) token in the thumbnail URL.
+    assert "!256,256/0/default." in data["thumbnail"]["@id"]
 
 
 def test_v21_manifest_structure(make_config):
@@ -95,8 +94,8 @@ def test_v21_manifest_structure(make_config):
     assert resource["service"]["@type"] == "ImageService2"
     assert resource["service"]["profile"] == "http://iiif.io/api/image/2.1/level0.json"
     # NOTE (deviation from plan line 1895): see test_v20_manifest_structure —
-    # endswith cannot match because the URL includes the file extension.
-    assert "square:256/0/default." in data["thumbnail"]["@id"]
+    # `in` instead of endswith (URL includes the file extension).
+    assert "!256,256/0/default." in data["thumbnail"]["@id"]
 
 
 def test_v30_manifest_structure_defaults_to_image_api_2(make_config):
@@ -119,15 +118,24 @@ def test_v30_manifest_structure_defaults_to_image_api_2(make_config):
     assert anno["motivation"] == "painting"
     assert anno["target"] == canvas["id"]
     body = anno["body"]
-    assert body["type"] == "ImageService2"
-    assert body["profile"] == "http://iiif.io/api/image/2/level0.json"
-    assert body["id"].endswith("/info.json")
-    assert "protocol" not in body
+    # NOTE (deviation from plan): the body is the full-size render (Image)
+    # carrying the image service (mirrors builders/v40.py); see v30.py.
+    assert body["type"] == "Image"
+    assert body["id"].endswith(
+        "/full/full/0/default.jpg"
+    ) or body["id"].endswith("/full/full/0/default.png")
+    service = body["service"][0]
+    assert service["type"] == "ImageService2"
+    assert service["profile"] == "http://iiif.io/api/image/2/level0.json"
+    # NOTE (deviation from plan): the service id is the Image API base URL
+    # (viewers fetch {id}/info.json), so there is no /info.json suffix.
+    assert service["id"] == "http://localhost:8080/a"
+    assert "protocol" not in service
     assert isinstance(data["thumbnail"], list)
     assert data["thumbnail"][0]["type"] == "Image"
     # NOTE (deviation from plan line 1922): see test_v20_manifest_structure —
-    # endswith cannot match because the URL includes the file extension.
-    assert "square:256/0/default." in data["thumbnail"][0]["id"]
+    # `in` instead of endswith (URL includes the file extension).
+    assert "!256,256/0/default." in data["thumbnail"][0]["id"]
 
 
 def test_v30_manifest_structure_image_api_3(make_config):
@@ -135,14 +143,18 @@ def test_v30_manifest_structure_image_api_3(make_config):
     data = manifest.data
     anno = data["items"][0]["items"][0]["items"][0]
     body = anno["body"]
-    assert body["type"] == "ImageService3"
-    assert body["profile"] == "level2"
-    assert body["protocol"] == "http://iiif.io/api/image/3/1/context.json"
-    assert body["maxWidth"] == body["width"]
-    assert body["maxHeight"] == body["height"]
+    # NOTE (deviation from plan): the body is the full-size render (Image)
+    # carrying the image service; see test_v30_manifest_structure_defaults_to_image_api_2.
+    assert body["type"] == "Image"
+    service = body["service"][0]
+    assert service["type"] == "ImageService3"
+    assert service["profile"] == "level2"
+    assert service["protocol"] == "http://iiif.io/api/image/3/1/context.json"
+    assert service["maxWidth"] == service["width"]
+    assert service["maxHeight"] == service["height"]
     # NOTE (deviation from plan line 1935): see test_v20_manifest_structure —
-    # endswith cannot match because the URL includes the file extension.
-    assert "square/0/default." in data["thumbnail"][0]["id"]
+    # `in` instead of endswith (URL includes the file extension).
+    assert "!256,256/0/default." in data["thumbnail"][0]["id"]
 
 
 def test_v40_manifest_structure_defaults_to_image_api_2(make_config):
@@ -166,13 +178,15 @@ def test_v40_manifest_structure_defaults_to_image_api_2(make_config):
     assert body["type"] == "Image"
     service = body["service"][0]
     assert service["@type"] == "ImageService2"
-    assert service["@id"].endswith("/info.json")
+    # NOTE (deviation from plan): the service id is the Image API base URL
+    # (viewers fetch {id}/info.json), so there is no /info.json suffix.
+    assert service["@id"] == "http://localhost:8080/a"
     assert service["profile"] == "http://iiif.io/api/image/2/level0.json"
     assert "id" not in service and "type" not in service
     assert isinstance(data["thumbnail"], list)
     # NOTE (deviation from plan line 1960): see test_v20_manifest_structure —
-    # endswith cannot match because the URL includes the file extension.
-    assert "square:256/0/default." in data["thumbnail"][0]["id"]
+    # `in` instead of endswith (URL includes the file extension).
+    assert "!256,256/0/default." in data["thumbnail"][0]["id"]
 
 
 def test_v40_manifest_structure_image_api_3(make_config):
@@ -184,8 +198,8 @@ def test_v40_manifest_structure_image_api_3(make_config):
     assert service["profile"] == "level2"
     assert service["protocol"] == "http://iiif.io/api/image/3/1/context.json"
     # NOTE (deviation from plan line 1971): see test_v20_manifest_structure —
-    # endswith cannot match because the URL includes the file extension.
-    assert "square/0/default." in data["thumbnail"][0]["id"]
+    # `in` instead of endswith (URL includes the file extension).
+    assert "!256,256/0/default." in data["thumbnail"][0]["id"]
 
 
 def test_v30_collection_items(make_config):

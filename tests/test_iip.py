@@ -21,15 +21,19 @@ def test_identifier_quotes_special_characters():
 
 def test_iip_urls_image_api_2():
     urls = build_iip_urls("http://images.example.org", "a/b/c", ".jpg", "2", True)
-    assert urls.info_url == "http://images.example.org/a/b/c/info.json"
+    # NOTE (deviation from plan): the service id is the Image API base URL
+    # (viewers fetch {info_url}/info.json), and thumbnails use the
+    # forced-size token !256,256 (see iip.py).
+    assert urls.info_url == "http://images.example.org/a/b/c"
     assert urls.full_url == "http://images.example.org/a/b/c/full/full/0/default.jpg"
-    assert urls.thumbnail_url == "http://images.example.org/a/b/c/full/square:256/0/default.jpg"
+    assert urls.thumbnail_url == "http://images.example.org/a/b/c/full/!256,256/0/default.jpg"
 
 
 def test_iip_urls_image_api_3_and_no_thumbnails():
     urls = build_iip_urls("http://images.example.org", "a/b/c", ".png", "3", False)
-    assert urls.info_url == "http://images.example.org/a/b/c/info.json"
+    # NOTE (deviation from plan): see test_iip_urls_image_api_2.
+    assert urls.info_url == "http://images.example.org/a/b/c"
     assert urls.full_url == "http://images.example.org/a/b/c/full/full/0/default.png"
     assert urls.thumbnail_url is None
     urls3 = build_iip_urls("http://images.example.org", "x", ".png", "3", True)
-    assert urls3.thumbnail_url == "http://images.example.org/x/full/square/0/default.png"
+    assert urls3.thumbnail_url == "http://images.example.org/x/full/!256,256/0/default.png"

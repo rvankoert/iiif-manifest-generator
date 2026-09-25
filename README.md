@@ -23,7 +23,10 @@ Please verify that the results are correct before using in production.
 
 Document identifiers are built from `--base-url`:
 `{base_url}/{path/below/root}/manifest.json`. The same base URL (or
-`--image-base-url`) is used for the IIPImage image-service URLs.
+`--image-base-url`) is used for the IIPImage image-service URLs. Unsafe
+characters in the base URL (for example spaces in the scan directory's URL)
+are percent-encoded automatically, so every generated identifier is a valid
+IRI.
 
 ## Install
 
@@ -77,6 +80,16 @@ iiif-manifest-generator /path/to/images --version 4.0 \
   `alpha/nested/d.jpg` → `{image-base-url}/alpha/nested/d/info.json`.
   Use `--keep-extension` to keep the extension. Adjust to match your IIPImage
   identifier configuration.
+- The manifests reference the image service with the service **id**
+  `{image-base-url}/{identifier}` (the IIIF Image API base URL); viewers fetch
+  `{id}/info.json`. IIPImage percent-decodes the identifier before looking up
+  the file, so scans with spaces in their names work as long as the
+  identifier matches your IIPImage configuration.
+- Thumbnails use the forced-size token `!256,256`
+  (`.../full/!256,256/0/default.{ext}`), which IIPImage supports via its
+  `sizeByForcedWh` capability. In 3.0/4.0 manifests the annotation body is the
+  full-size render (an `Image`) carrying the image service, mirroring 4.0 and
+  the 3.0 spec's own examples.
 - By default, **all** manifests reference an IIIF Image API 2 service
   (`ImageService2`, level0), which works with a standard IIPImage IIIF
   configuration. For 3.0/4.0 manifests you can pass `--image-api-3` to

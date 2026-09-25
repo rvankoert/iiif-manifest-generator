@@ -38,11 +38,14 @@ def build_iip_urls(
     image_api_version: str,
     thumbnails: bool,
 ) -> IipUrls:
-    """Build info.json, full-size render and thumbnail URLs.
+    """Build the image service id, full-size render and thumbnail URLs.
 
+    ``info_url`` is the IIIF Image API service id, i.e. the base URL
+    ``{base}/{identifier}``; viewers fetch ``{info_url}/info.json`` from it.
     Image API 2.x and 3.x share the URL syntax
     {base}/{identifier}/{region}/{size}/{rotation}/{quality}.{format};
-    only the allowed size tokens differ ('square:256' vs 'square').
+    thumbnails use the forced-size token ``!256,256``, which both versions
+    (and IIPImage, via ``sizeByForcedWh``) support.
     """
     ext = extension.lstrip(".").lower()
     info_url = f"{image_base_url}/{identifier}"

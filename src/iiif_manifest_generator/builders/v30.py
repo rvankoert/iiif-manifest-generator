@@ -74,7 +74,22 @@ def _canvas(
                         "id": f"{canvas_id}/page/1/annotation/1",
                         "type": "Annotation",
                         "motivation": "painting",
-                        "body": _image_service(info, config.image_api_version),
+                        # NOTE (deviation from plan): the body is the full-size
+                        # render (Image) carrying the image service, mirroring
+                        # builders/v40.py and the 3.0 spec's own examples. This
+                        # is the most viewer-friendly shape: IIIF-aware viewers
+                        # use the service, others can still load the full
+                        # render directly from the body id.
+                        "body": {
+                            "id": info.iip.full_url,
+                            "type": "Image",
+                            "format": info.mime,
+                            "width": info.width,
+                            "height": info.height,
+                            "service": [
+                                _image_service(info, config.image_api_version)
+                            ],
+                        },
                         "target": canvas_id,
                     }
                 ],

@@ -53,3 +53,26 @@ def test_generated_tree_passes_official_validator(version, image_api3, image_tre
         f"validator failed for {version} (image_api3={image_api3})\n"
         f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
     )
+
+
+@pytest.mark.parametrize("version,image_api3", CASES)
+def test_spaces_tree_passes_official_validator(version, image_api3, image_tree_spaces):
+    # The base URL contains a raw space (a scan directory named "my scan");
+    # the config must normalize it so every document id is a valid IRI.
+    config = GenerationConfig(
+        root=image_tree_spaces,
+        version=version,
+        base_url="http://localhost:8080/my scan",
+        image_api3=image_api3,
+    )
+    generate(config)
+    proc = subprocess.run(
+        [VALIDATOR, "validate-dir", "--version", version, str(image_tree_spaces)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    assert proc.returncode == 0, (
+        f"validator failed for {version} (image_api3={image_api3})\n"
+        f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    )

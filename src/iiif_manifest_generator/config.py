@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import quote, urlsplit
 
 VERSIONS: tuple[str, ...] = ("2.0", "2.1", "3.0", "4.0")
 
@@ -54,9 +55,23 @@ class GenerationConfig:
 
     @staticmethod
     def _normalize_url(value: str, name: str) -> str:
+        """Validate and normalize a base URL (must be http(s); no trailing /).
+
+        The URL path (and query, if any) is percent-encoded so that every
+        document identifier built from the base URL is a valid IRI, even when
+        the URL contains spaces or other unsafe characters (e.g. a scan
+        directory whose name contains spaces). Already-percent-encoded
+        sequences are left untouched (no double-encoding); the scheme,
+        netloc and fragment are not modified.
+        """
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"{name} must not be empty")
         for prefix in ("http://", "https://"):
             if value.startswith(prefix):
-                return value.rstrip("/")
+                parts = urlsplit(value)
+                path = quote(parts.path, safe="/%")
+                query = (
+                    quote(parts.query, safe="=&%") if parts.query else parts.query
+                )
+                return parts._replace(path=path, query=query).geturl().rstrip("/")
         raise ValueError(f"{name} must start with http:// or https://, got {value!r}")
